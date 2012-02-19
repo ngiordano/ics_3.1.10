@@ -257,7 +257,16 @@ static struct s3c2410_uartcfg aries_uartcfgs[] __initdata = {
 		.flags		= 0,
 		.ucon		= S5PV210_UCON_DEFAULT,
 		.ulcon		= S5PV210_ULCON_DEFAULT,
+#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_VIBRANT) || defined(CONFIG_SAMSUNG_GALAXYS)
+#ifdef CONFIG_GPS_CHIPSET_STE_CG2900 /* STE for CG2900 */
+                .ufcon		 = S3C2410_UFCON_FIFOMODE | S5PV210_UFCON_TXTRIG64 | S5PV210_UFCON_RXTRIG8, // -> RX trigger leve : 8byte.
+#else
+		.ufcon		 = S3C2410_UFCON_FIFOMODE | S5PV210_UFCON_TXTRIG64 | S5PV210_UFCON_RXTRIG1, // -> RX trigger leve : 8byte.
+#endif
+#else
 		.ufcon		= S5PV210_UFCON_DEFAULT,
+#endif
+
 	},
 #ifndef CONFIG_FIQ_DEBUGGER
 	{
@@ -286,11 +295,10 @@ static struct s3cfb_lcd s6e63m0 = {
 	.p_width = 52,
 	.p_height = 86,
 	.bpp = 24,
-#ifdef CONFIG_FB_S3C_UNLOCKED_REFRESH
-	.freq = 68,
-#else
-	.freq = 60,
-#endif
+
+
+	.freq = 72,
+
 
 	.timing = {
 		.h_fp = 16,
@@ -309,7 +317,6 @@ static struct s3cfb_lcd s6e63m0 = {
 		.inv_vden = 1,
 	},
 };
-
 
 #ifdef CONFIG_S5PV210_BIGMEM
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (5632 * SZ_1K)
@@ -417,7 +424,6 @@ static struct s5p_media_device aries_media_devs[] = {
 	},	
 #endif
 };
-
 #ifdef CONFIG_CPU_FREQ
 static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
 	{
