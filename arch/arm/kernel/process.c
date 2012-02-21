@@ -240,9 +240,6 @@ void cpu_idle(void)
 #endif
 
 			local_irq_disable();
-#ifdef CONFIG_PL310_ERRATA_769419
-			wmb();
-#endif
 			if (hlt_counter) {
 				local_irq_enable();
 				cpu_relax();
@@ -585,14 +582,14 @@ EXPORT_SYMBOL(kernel_thread);
 
 unsigned long get_wchan(struct task_struct *p)
 {
-/*	struct stackframe frame;
+	struct stackframe frame;
 	int count = 0;
 	if (!p || p == current || p->state == TASK_RUNNING)
 		return 0;
 
 	frame.fp = thread_saved_fp(p);
 	frame.sp = thread_saved_sp(p);
-	frame.lr = 0;			/* recovered from the stack
+	frame.lr = 0;			/* recovered from the stack */
 	frame.pc = thread_saved_pc(p);
 	do {
 		int ret = unwind_frame(&frame);
@@ -600,7 +597,7 @@ unsigned long get_wchan(struct task_struct *p)
 			return 0;
 		if (!in_sched_functions(frame.pc))
 			return frame.pc;
-	} while (count ++ < 16); */
+	} while (count ++ < 16);
 	return 0;
 }
 

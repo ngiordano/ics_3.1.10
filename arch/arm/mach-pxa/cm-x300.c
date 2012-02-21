@@ -770,6 +770,7 @@ static void __init cm_x300_init_da9030(void)
 
 static void __init cm_x300_init_wi2wi(void)
 {
+	int bt_reset, wlan_en;
 	int err;
 
 	if (system_rev < 130) {

@@ -39,13 +39,18 @@
 #define SCHED_BATCH		3
 /* SCHED_ISO: Implemented on BFS only */
 #define SCHED_IDLE		5
-#ifdef CONFIG_SCHED_BFS
-#define SCHED_ISO		4
-#define SCHED_IDLEPRIO		SCHED_IDLE
-#define SCHED_MAX		(SCHED_IDLEPRIO)
-#define SCHED_RANGE(policy)	((policy) <= SCHED_MAX)
-#endif
 
+#ifdef CONFIG_SCHED_BFS
+	
+#define SCHED_ISO    4
+	
+#define SCHED_IDLEPRIO    SCHED_IDLE
+	
+#define SCHED_MAX    (SCHED_IDLEPRIO)
+
+#define SCHED_RANGE(policy)  ((policy) <= SCHED_MAX)
+
+#endif
 /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
 #define SCHED_RESET_ON_FORK     0x40000000
 
@@ -129,7 +134,7 @@ extern void get_avenrun(unsigned long *loads, unsigned long offset, int shift);
 
 #define FSHIFT		11		/* nr of bits of precision */
 #define FIXED_1		(1<<FSHIFT)	/* 1.0 as fixed-point */
-#define LOAD_FREQ	(4*HZ+61)	/* 5 sec intervals */
+#define LOAD_FREQ	(5*HZ+1)	/* 5 sec intervals */
 #define EXP_1		1884		/* 1/exp(5sec/1min) as fixed-point */
 #define EXP_5		2014		/* 1/exp(5sec/5min) */
 #define EXP_15		2037		/* 1/exp(5sec/15min) */
@@ -274,6 +279,7 @@ extern void sched_init_smp(void);
 extern asmlinkage void schedule_tail(struct task_struct *prev);
 extern void init_idle(struct task_struct *idle, int cpu);
 extern void init_idle_bootup_task(struct task_struct *idle);
+
 
 extern cpumask_var_t nohz_cpu_mask;
 #if defined(CONFIG_SMP) && defined(CONFIG_NO_HZ)
@@ -1229,16 +1235,19 @@ struct task_struct {
 	unsigned int flags;	/* per process flags, defined below */
 	unsigned int ptrace;
 
-#ifdef CONFIG_SMP
-	struct task_struct *wake_entry;
-#endif
 #if defined(CONFIG_SMP) || defined(CONFIG_SCHED_BFS)
-	bool on_cpu;
-#endif
-#endif
-#ifndef CONFIG_SCHED_BFS
-	bool on_rq;
-#endif
+   	
+    bool on_cpu;
+   	
+    #endif
+    	
+    #endif
+   	
+    #ifndef CONFIG_SCHED_BFS
+    	
+    bool on_rq;
+    	
+    #endif
 
 	int prio, static_prio, normal_prio;
 	unsigned int rt_priority;
@@ -1366,9 +1375,12 @@ struct task_struct {
 	int __user *clear_child_tid;		/* CLONE_CHILD_CLEARTID */
 
 	cputime_t utime, stime, utimescaled, stimescaled;
-#ifdef CONFIG_SCHED_BFS
-	unsigned long utime_pc, stime_pc;
-#endif
+    
+    #ifdef CONFIG_SCHED_BFS
+ 
+    unsigned long utime_pc, stime_pc;
+    	
+    #endif
 	cputime_t gtime;
 #ifndef CONFIG_VIRT_CPU_ACCOUNTING
 	cputime_t prev_utime, prev_stime;
@@ -1551,12 +1563,6 @@ struct task_struct {
 	int make_it_fail;
 #endif
 	struct prop_local_single dirties;
-/*
-	 * when (nr_dirtied >= nr_dirtied_pause), it's time to call
-	 * balance_dirty_pages() for some dirty throttling pause
-	 */
-	int nr_dirtied;
-	int nr_dirtied_pause;
 #ifdef CONFIG_LATENCYTOP
 	int latency_record_count;
 	struct latency_record latency_record[LT_SAVECOUNT];
@@ -2796,3 +2802,4 @@ static inline unsigned long rlimit_max(unsigned int limit)
 }
 
 #endif /* __KERNEL__ */
+

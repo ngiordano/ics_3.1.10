@@ -21,16 +21,9 @@ config CPU_S5PV210
 config CPU_DIDLE
         bool "Enable DEEP IDLE support for S5PV210 CPU"
         depends on CPU_IDLE
-        default y
+        default n
         help
           Enable DEEP IDLE support for S5PV210 CPU.
-
-config S5PV210_BIGMEM
-	bool "Enable Bigmem (more free RAM)"
-	default n
-	help
-	  Aggressively restrict the memory set aside on
-	  boot for FIMC, MFC and JPEG.
 
 config S5PV210_SETUP_I2C1
 	bool
@@ -87,7 +80,7 @@ config S5PV210_POWER_DOMAIN
 config S5PV210_CORESIGHT
 	bool "Coresight"
 	select OC_ETM
-	default n
+	default y
 	help
 	  Support embedded trace cell
 
@@ -366,6 +359,11 @@ config S5PV210_SETUP_FIMC2
 config DVFS_LIMIT
 	bool "DVFS limit"
 	depends on CPU_FREQ
+	default n
+
+config CPU_DIDLE
+	bool "DEEP Idle"
+	depends on CPU_IDLE
 	default n
 
 config WIFI_CONTROL_FUNC

@@ -887,12 +887,6 @@ void __init setup_arch(char **cmdline_p)
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
 
-#ifdef CONFIG_ZONE_DMA
-	if (mdesc->dma_zone_size) {
-		extern unsigned long arm_dma_zone_size;
-		arm_dma_zone_size = mdesc->dma_zone_size;
-	}
-#endif
 	if (mdesc->soft_reboot)
 		reboot_setup("s");
 
@@ -985,10 +979,6 @@ static const char *hwcap_str[] = {
 	"neon",
 	"vfpv3",
 	"vfpv3d16",
-	"tls",
-	"vfpv4",
-	"idiva",
-	"idivt",
 	NULL
 };
 

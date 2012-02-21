@@ -250,23 +250,9 @@ int core_tmr_lun_reset(
 		if (prout_cmd == cmd)
 			continue;
 
-		list_move_tail(&task->t_state_list, &drain_task_list);
-		atomic_set(&task->task_state_active, 0);
-		/*
-		 * Remove from task execute list before processing drain_task_list
-		 */
-		if (atomic_read(&task->task_execute_queue) != 0) {
-			list_del(&task->t_execute_list);
-			atomic_set(&task->task_execute_queue, 0);
-			atomic_dec(&dev->execute_tasks);
-		}
-	}
-	spin_unlock_irqrestore(&dev->execute_task_lock, flags);
-
-	while (!list_empty(&drain_task_list)) {
-		task = list_entry(drain_task_list.next, struct se_task, t_state_list);
 		list_del(&task->t_state_list);
-		cmd = task->task_se_cmd;
+		atomic_set(&task->task_state_active, 0);
+		spin_unlock_irqrestore(&dev->execute_task_lock, flags);
 
 		spin_lock_irqsave(&T_TASK(cmd)->t_state_lock, flags);
 		DEBUG_LR("LUN_RESET: %s cmd: %p task: %p"
@@ -428,4 +414,3 @@ int core_tmr_lun_reset(
 			TRANSPORT(dev)->name);
 	return 0;
 }
-

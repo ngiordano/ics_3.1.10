@@ -21,11 +21,7 @@
 extern void touchscreen_enable(void);
 extern void touchscreen_disable(void);
 
-#ifdef CONFIG_TOUCH_WAKE_DEFAULT_ENABLED
-static bool touchwake_enabled = true;
-#else
 static bool touchwake_enabled = false;
-#endif
 
 static bool touch_disabled = false;
 
@@ -157,11 +153,15 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 static void press_powerkey(struct work_struct * presspower_work)
 {
     input_event(powerkey_device, EV_KEY, KEY_POWER, 1);
+    
     input_event(powerkey_device, EV_SYN, 0, 0);
+
     msleep(presspower_delay);
 
     input_event(powerkey_device, EV_KEY, KEY_POWER, 0);
+    
     input_event(powerkey_device, EV_SYN, 0, 0);
+
     msleep(presspower_delay);
 
     mutex_unlock(&lock);

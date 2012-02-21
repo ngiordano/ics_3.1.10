@@ -71,7 +71,7 @@ __inline__ void otg_handle_interrupt(struct usb_hcd *hcd)
 	if (gintsts.b.conidstschng) {
 		otg_dbg(OTG_DBG_ISR, "Connect ID Status Change Interrupt\n");
 		clearIntr.b.conidstschng = 1;
-		oci_init_mode();
+		oci_init_mode(otghost);
 	}
 
 	if (gintsts.b.hcintr) {
@@ -285,7 +285,7 @@ void process_port_intr(struct usb_hcd *hcd)
 		queue_work(otghost->wq, &otghost->work);
 	}
 
-	hprt.b.prtena = 0; /* prtenaÂ¸Â¦ writeclearÂ½ÃƒÃ…Â°Â¸Ã© Â¾ÃˆÂµÃŠ. */
+	hprt.b.prtena = 0; /* prtena¸¦ writeclear½ÃÅ°¸é ¾ÈµÊ. */
 	/* hprt.b.prtpwr = 0; */
 	hprt.b.prtrst = 0;
 	hprt.b.prtconnsts = 0;

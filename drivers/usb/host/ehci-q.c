@@ -649,7 +649,7 @@ qh_urb_transaction (
 	/*
 	 * data transfer stage:  buffer setup
 	 */
-	i = urb->num_mapped_sgs;
+	i = urb->num_sgs;
 	if (len > 0 && i > 0) {
 		sg = urb->sg;
 		buf = sg_dma_address(sg);
@@ -1001,12 +1001,6 @@ static void qh_link_async (struct ehci_hcd *ehci, struct ehci_qh *qh)
 	 * */
 	ehci_sync_mem();
 
-	/*
-	 * flush qh descriptor into memory immediately,
-	 * see comments in qh_append_tds.
-	 */
-	ehci_sync_mem();
-
 	qh_get(qh);
 	qh->xacterrs = 0;
 	qh->qh_state = QH_STATE_LINKED;
@@ -1104,18 +1098,6 @@ static struct ehci_qh *qh_append_tds (
 			 * memory, so that ehci can execute the transaction
 			 * ASAP.
 			 * */
-			ehci_sync_mem();
-
-			/*
-			 * Writing to dma coherent buffer on ARM may
-			 * be delayed to reach memory, so HC may not see
-			 * hw_token of dummy qtd in time, which can cause
-			 * the qtd transaction to be executed very late,
-			 * and degrade performance a lot. ehci_sync_mem
-			 * is added to flush 'token' immediatelly into
-			 * memory, so that ehci can execute the transaction
-			 * ASAP.
-			 */
 			ehci_sync_mem();
 
 			urb->hcpriv = qh_get (qh);

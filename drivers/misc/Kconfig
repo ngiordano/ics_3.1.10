@@ -61,6 +61,25 @@ config AD525X_DPOT_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad525x_dpot-spi.
 
+config ANDROID_PMEM
+	bool "Android pmem allocator"
+	default y
+
+if  ANDROID_PMEM
+   comment "Reserved memory configurations"
+config ANDROID_PMEM_MEMSIZE_PMEM
+        int "Memory size in kbytes for android surface using pmem"
+        default "8192"
+
+config ANDROID_PMEM_MEMSIZE_PMEM_GPU1
+        int "Memory size in kbytes for android surface using pmem_gpu1"
+        default "3072"
+
+config ANDROID_PMEM_MEMSIZE_PMEM_ADSP
+        int "Memory size in kbytes for android surface using pmem_adsp"
+        default "6144"
+endif
+
 config ATMEL_PWM
 	tristate "Atmel AT32/AT91 PWM support"
 	depends on AVR32 || ARCH_AT91SAM9263 || ARCH_AT91SAM9RL || ARCH_AT91CAP9
@@ -498,7 +517,7 @@ config BMP085
 	  module will be called bmp085.
 
 config PCH_PHUB
-	tristate "Intel EG20T PCH / OKI SEMICONDUCTOR IOH(ML7213/ML7223) PHUB"
+	tristate "Intel EG20T PCH/LAPIS Semicon IOH(ML7213/ML7223/ML7831) PHUB"
 	depends on PCI
 	help
 	  This driver is for PCH(Platform controller Hub) PHUB(Packet Hub) of
@@ -506,12 +525,13 @@ config PCH_PHUB
 	  processor. The Topcliff has MAC address and Option ROM data in SROM.
 	  This driver can access MAC address and Option ROM data in SROM.
 
-	  This driver also can be used for OKI SEMICONDUCTOR IOH(Input/
-	  Output Hub), ML7213 and ML7223.
-	  ML7213 IOH is for IVI(In-Vehicle Infotainment) use and ML7223 IOH is
-	  for MP(Media Phone) use.
-	  ML7213/ML7223 is companion chip for Intel Atom E6xx series.
-	  ML7213/ML7223 is completely compatible for Intel EG20T PCH.
+	  This driver also can be used for LAPIS Semiconductor's IOH,
+	  ML7213/ML7223/ML7831.
+	  ML7213 which is for IVI(In-Vehicle Infotainment) use.
+	  ML7223 IOH is for MP(Media Phone) use.
+	  ML7831 IOH is for general purpose use.
+	  ML7213/ML7223/ML7831 is companion chip for Intel Atom E6xx series.
+	  ML7213/ML7223/ML7831 is completely compatible for Intel EG20T PCH.
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called pch_phub.
@@ -568,27 +588,17 @@ source "drivers/misc/carma/Kconfig"
 config SAMSUNG_MODEMCTL
 	bool "Samsung Modem Control/IO Driver"
 
-config MODEM_HAS_CRAPPY_BOOTLOADER
-	bool "Samsung Modem Control/IO Driver Bootloader is crap"
-	depends on SAMSUNG_MODEMCTL
-	help
-	  If you use the Samsung Modem Control driver on the older
-	  SGS devices the bootloader won't tell you that it finished
-	  loading. This is a workaround for that, it only waits some
-	  time and tries to to continue.
-
 config PN544
 	bool "NXP PN544 NFC Controller Driver"
 	default n
 	help
 	  NXP PN544 Near Field Communication controller support.
 
-config SAMSUNG_PARAM
-	bool "Samsung Param Driver"
-	depends on MACH_ARIES
-	default n
-	help
-	  Driver for communication with Samsung's secondary bootloader
+config BLX
+       bool "support for Battery Life eXtender"
+       default y
+       help
+        Say Y here to enable Battery Life eXtender
 
 config LIVE_OC
        bool "Support for Live OC"
@@ -601,17 +611,5 @@ config CUSTOM_VOLTAGE
        default y
        help
          Say Y here to enable Custom Voltage
-
-config BLD
-       bool "Support for Backlight Dimmer"
-       default y
-       help
-         Say Y here to enable Backlight Dimmer
-
-config BLX
-       bool "Support for Battery Life eXtender"
-       default y
-       help
-         Say Y here to enable Battery Life eXtender
 
 endif # MISC_DEVICES

@@ -551,10 +551,7 @@ static int find_cifs_entry(const int xid, struct cifs_tcon *pTcon,
 				 rc);
 			return rc;
 		}
-		/* FindFirst/Next set last_entry to NULL on malformed reply */
-		if (cifsFile->srch_inf.last_entry)
-			cifs_save_resume_key(cifsFile->srch_inf.last_entry,
-						cifsFile);
+		cifs_save_resume_key(cifsFile->srch_inf.last_entry, cifsFile);
 	}
 
 	while ((index_to_find >= cifsFile->srch_inf.index_of_last_entry) &&
@@ -562,10 +559,7 @@ static int find_cifs_entry(const int xid, struct cifs_tcon *pTcon,
 		cFYI(1, "calling findnext2");
 		rc = CIFSFindNext(xid, pTcon, cifsFile->netfid,
 				  &cifsFile->srch_inf);
-		/* FindFirst/Next set last_entry to NULL on malformed reply */
-		if (cifsFile->srch_inf.last_entry)
-			cifs_save_resume_key(cifsFile->srch_inf.last_entry,
-						cifsFile);
+		cifs_save_resume_key(cifsFile->srch_inf.last_entry, cifsFile);
 		if (rc)
 			return -ENOENT;
 	}

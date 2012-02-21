@@ -187,7 +187,7 @@ struct usb_hcd {
 #endif
 
 	unsigned long hcd_priv[0]
-			__attribute__ ((aligned(sizeof(s64))));
+			__attribute__ ((aligned(sizeof(unsigned long))));
 };
 
 /* 2.4 does this a bit differently ... */

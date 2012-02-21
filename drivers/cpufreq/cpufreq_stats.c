@@ -254,7 +254,7 @@ static int cpufreq_stats_create_table(struct cpufreq_policy *policy,
 	stat->last_index = freq_table_get_index(stat, policy->cur);
 #ifdef CONFIG_LIVE_OC
 	if (stat->last_index == -1)
-		stat->last_index = 0;
+	    stat->last_index = 0;
 #endif
 	spin_unlock(&cpufreq_stats_lock);
 	cpufreq_cpu_put(data);
@@ -369,8 +369,7 @@ static int __cpuinit cpufreq_stat_cpu_callback(struct notifier_block *nfb,
 }
 
 /* priority=1 so this will get called before cpufreq_remove_dev */
-static struct notifier_block cpufreq_stat_cpu_notifier __refdata =
-{
+static struct notifier_block cpufreq_stat_cpu_notifier __refdata = {
 	.notifier_call = cpufreq_stat_cpu_callback,
 	.priority = 1,
 };
@@ -434,7 +433,7 @@ void cpufreq_stats_reset(void)
 				CPUFREQ_TRANSITION_NOTIFIER);
     unregister_hotcpu_notifier(&cpufreq_stat_cpu_notifier);
     for_each_online_cpu(cpu) {
-cpufreq_stats_free_sysfs(cpu);
+	cpufreq_stats_free_sysfs(cpu);
 	cpufreq_stats_free_table(cpu);
     }
 

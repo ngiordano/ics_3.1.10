@@ -116,7 +116,7 @@ struct red_parms {
 	u32		qR;		/* Cached random number */
 
 	unsigned long	qavg;		/* Average queue length: A scaled */
-	ktime_t		qidlestart;	/* Start of current idle period */
+	psched_time_t	qidlestart;	/* Start of current idle period */
 };
 
 static inline u32 red_rmask(u8 Plog)
@@ -148,17 +148,17 @@ static inline void red_set_parms(struct red_parms *p,
 
 static inline int red_is_idling(struct red_parms *p)
 {
-	return p->qidlestart.tv64 != 0;
+	return p->qidlestart != PSCHED_PASTPERFECT;
 }
 
 static inline void red_start_of_idle_period(struct red_parms *p)
 {
-	p->qidlestart = ktime_get();
+	p->qidlestart = psched_get_time();
 }
 
 static inline void red_end_of_idle_period(struct red_parms *p)
 {
-	p->qidlestart.tv64 = 0;
+	p->qidlestart = PSCHED_PASTPERFECT;
 }
 
 static inline void red_restart(struct red_parms *p)
@@ -170,9 +170,12 @@ static inline void red_restart(struct red_parms *p)
 
 static inline unsigned long red_calc_qavg_from_idle_time(struct red_parms *p)
 {
-	s64 delta = ktime_us_delta(ktime_get(), p->qidlestart);
-	long us_idle = min_t(s64, delta, p->Scell_max);
+	psched_time_t now;
+	long us_idle;
 	int  shift;
+
+	now = psched_get_time();
+	us_idle = psched_tdiff_bounded(now, p->qidlestart, p->Scell_max);
 
 	/*
 	 * The problem: ideally, average length queue recalcultion should

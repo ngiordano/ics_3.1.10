@@ -159,26 +159,6 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
-config CPU_FREQ_DEFAULT_GOV_LULZACTIVE
-	bool "lulzactive"
-	select CPU_FREQ_GOV_LULZACTIVE
-	select CPU_FREQ_GOV_PERFORMANCE
-	help
-	  Use the CPUFreq governor 'lulzactive' as default.
-
-config CPU_FREQ_DEFAULT_GOV_SMARTASS2
-        bool "smartass2"
-        select CPU_FREQ_GOV_SMARTASS2
-        help
-            Use the CPUFreq governor 'smartassV2' as default.
-
-config CPU_FREQ_DEFAULT_GOV_LAZY
-  bool "lazy"
-  select CPU_FREQ_GOV_LAZY
-  select CPU_FREQ_GOV_PERFORMANCE
-  help
-    Use the CPUFreq governor 'lazy' as default.
-
 config CPU_FREQ_DEFAULT_GOV_INTERACTIVEX
 	bool "interactiveX"
 	select CPU_FREQ_GOV_INTERACTIVEX
@@ -188,6 +168,26 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVEX
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactiveX' governor for latency-sensitive workloads.
 
+config CPU_FREQ_DEFAULT_GOV_LULZACTIVE
+	bool "lulzactive"
+	select CPU_FREQ_GOV_LULZACTIVE
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+	  Use the CPUFreq governor 'lulzactive' as default.
+
+
+config CPU_FREQ_DEFAULT_GOV_SMARTASS2
+	bool "smartass2"
+	select CPU_FREQ_GOV_SMARTASS2
+	help
+	 Use the CPUFreq governor 'smartassV2' as default.
+
+config CPU_FREQ_DEFAULT_GOV_LAZY
+	bool "lazy"
+	select CPU_FREQ_GOV_LAZY
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+	  Use the CPUFreq governor 'lazy' as default.
 
 endchoice
 
@@ -333,19 +333,12 @@ config CPU_FREQ_GOV_INTERACTIVEX
 	help
 	  'interactiveX' - Modified version of interactive with sleep+wake code.
 
-
 config CPU_FREQ_GOV_SMARTASS2
 	tristate "'smartassV2' cpufreq governor"
 	depends on CPU_FREQ
 	help
 	 'smartassV2' - a "smart" governor
 	 If in doubt, say N.
-
-
-config CPU_FREQ_GOV_LAZY
-  tristate "'lazy' cpufreq governor"
-  depends on CPU_FREQ
-
 
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
@@ -390,14 +383,6 @@ config CPU_FREQ_GOV_LAGFREE
           For details, take a look at linux/Documentation/cpu-freq.
 
           If in doubt, say N.
-
-config CPU_FREQ_GOV_LULZACTIVE
-  tristate "'lulzactive' cpufreq governor"
-  depends on CPU_FREQ
-  help
-    'lulzactive' - a new interactive governor by Tegrak!
-
-    If in doubt, say N.
 
 config CPU_FREQ_MIN_TICKS
 	int "Ticks between governor polling interval."

@@ -174,7 +174,7 @@ irqreturn_t bt_host_wake_irq_handler(int irq, void *dev_id)
 	pr_debug("[BT] bt_host_wake_irq_handler start\n");
 
 #ifdef CONFIG_CPU_DIDLE
-		bt_running = true;
+	bt_running = true;
 #endif
 
 	if (gpio_get_value(GPIO_BT_HOST_WAKE))

@@ -34,10 +34,10 @@
  */
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
-#define DEF_FREQUENCY_UP_THRESHOLD		(80)
+#define DEF_FREQUENCY_UP_THRESHOLD		(60)
 #define DEF_SAMPLE_RATE				(15000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL	(3)
-#define MICRO_FREQUENCY_UP_THRESHOLD		(90)
+#define MICRO_FREQUENCY_UP_THRESHOLD		(80)
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
@@ -300,7 +300,6 @@ static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
     if (ret != 1)
 	return -EINVAL;
     dbs_tuners_ins.sampling_rate = max(input, min_sampling_rate);
-    dbs_tuners_ins.min_timeinstate = max(dbs_tuners_ins.min_timeinstate, dbs_tuners_ins.sampling_rate);
     return count;
 }
 
@@ -392,7 +391,7 @@ static ssize_t store_min_timeinstate(struct kobject *a, struct attribute *b,
     ret = sscanf(buf, "%u", &input);
     if (ret != 1)
 	return -EINVAL;
-    dbs_tuners_ins.min_timeinstate = max(input, dbs_tuners_ins.sampling_rate);
+    dbs_tuners_ins.min_timeinstate = max(input, min_sampling_rate);
     return count;
 }
 
@@ -736,7 +735,6 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	    dbs_tuners_ins.sampling_rate = max(min_sampling_rate, DEF_SAMPLE_RATE);
 	    current_sampling_rate = dbs_tuners_ins.sampling_rate;
 	    dbs_tuners_ins.min_timeinstate = latency * LATENCY_MULTIPLIER;
-	    dbs_tuners_ins.min_timeinstate = max(dbs_tuners_ins.sampling_rate, dbs_tuners_ins.min_timeinstate);
 	    dbs_tuners_ins.io_is_busy = should_io_be_busy();
 	}
 	mutex_unlock(&dbs_mutex);

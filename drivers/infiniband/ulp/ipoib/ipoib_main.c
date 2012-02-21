@@ -555,7 +555,6 @@ static int path_rec_start(struct net_device *dev,
 	return 0;
 }
 
-/* called with rcu_read_lock */
 static void neigh_add_path(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ipoib_dev_priv *priv = netdev_priv(dev);
@@ -635,7 +634,6 @@ err_drop:
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
-/* called with rcu_read_lock */
 static void ipoib_path_lookup(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ipoib_dev_priv *priv = netdev_priv(skb->dev);
@@ -786,14 +784,13 @@ static int ipoib_start_xmit(struct sk_buff *skb, struct net_device *dev)
 					   phdr->hwaddr + 4);
 				dev_kfree_skb_any(skb);
 				++dev->stats.tx_dropped;
-				goto unlock;
+				return NETDEV_TX_OK;
 			}
 
 			unicast_arp_send(skb, dev, phdr);
 		}
 	}
-unlock:
-	rcu_read_unlock();
+
 	return NETDEV_TX_OK;
 }
 

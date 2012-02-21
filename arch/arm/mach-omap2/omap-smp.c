@@ -109,10 +109,12 @@ void __init smp_init_cpus(void)
 	ncores = scu_get_core_count(scu_base);
 
 	/* sanity check */
-	if (ncores > nr_cpu_ids) {
-		pr_warn("SMP: %u cores greater than maximum (%u), clipping\n",
-			ncores, nr_cpu_ids);
-		ncores = nr_cpu_ids;
+	if (ncores > NR_CPUS) {
+		printk(KERN_WARNING
+		       "OMAP4: no. of cores (%d) greater than configured "
+		       "maximum of %d - clipping\n",
+		       ncores, NR_CPUS);
+		ncores = NR_CPUS;
 	}
 
 	for (i = 0; i < ncores; i++)
