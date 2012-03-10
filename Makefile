@@ -1,8 +1,8 @@
 VERSION = 3
 PATCHLEVEL = 1
 SUBLEVEL = 10
-EXTRAVERSION =_ICS_Kiss_v2
-NAME = "Divemaster Edition"
+EXTRAVERSION = -ICS_Kiss_4
+NAME = Divemaster Edition
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
@@ -196,7 +196,7 @@ ARCH		?= arm
 #CROSS_COMPILE	?= ../../../prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
 #CROSS_COMPILE	?= /opt/toolchains/arm-2011.03/bin/arm-none-linux-gnueabi-
 #CROSS_COMPILE	?= /opt/toolchains/arm-2011.03/bin/arm-none-linux-gnueabi-
-CROSS_COMPILE	?= /opt/toolchain/arm-2009q3/bin/arm-none-linux-gnueabi-
+CROSS_COMPILE	?= /opt/arm-2009q3/bin/arm-none-linux-gnueabi-
 #CROSS_COMPILE   ?= /opt/toolchains/android-toolchain-eabi_4.5-2011.07/bin/arm-eabi-
 #CROSS_COMPILE   ?= /opt/toolchains/android-toolchain-eabi_4.5-2011.08/bin/arm-eabi-
 #CROSS_COMPILE   ?= /opt/toolchains/android-toolchain-eabi_4.5-2011.09/bin/arm-eabi-

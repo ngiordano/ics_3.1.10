@@ -13,20 +13,26 @@ config FB_S3C
 	---help---
 	  This enables support for Samsung Display Controller (FIMD)
 
-config DEV_BOOTLOGO
-        bool "Development builds bootlogo"
-        depends on MACH_ARIES
-	default y
-
-config FB_S3C_UNLOCKED_REFRESH
-        bool "Unlocked screen refresh rate to 68Hz"
-        depends on FB_S3C
-	default n
 
 config FB_S3C_SPLASH_SCREEN
         bool "SPLASH_SCREEN on LCD"
         depends on FB_S3C
 	default n
+
+config CONFIG_FB_S3C_UNLOCKED_REFRESH
+        bool "Unlocked screen refresh rate to 68Hz"
+        depends on FB_S3C
+  default n
+
+config BW_SPLASH
+        bool "Splash logo in black and white"
+        depends on MACH_ARIES
+  default n
+
+config FB_S3C_SPLASH_SCREEN_BW
+       bool "SPLASH_SCREEN on LCD in Black and White only"
+        depends on FB_S3C_SPLASH_SCREEN
+
 
 config FB_S3C_LCD_INIT
         bool "LCD init in kernel"
@@ -120,6 +126,21 @@ config FB_S3C_TL2796
         select SPI_BITBANG
         ---help---
           This enables support for Samsung TL2796 WVGA LCD panel
+
+config FB_VOODOO
+        bool "Voodoo Color"
+        depends on FB_S3C_TL2796
+        default y
+        ---help---
+          This enables support Voodoo color mods
+
+config FB_VOODOO_DEBUG_LOG
+        bool "Verbose Super AMOLED driver logs"
+        depends on FB_VOODOO
+        default n
+        ---help---
+          Logging for developers
+          Super AMOLED hardware command decoding and driver calculations
 
 config FB_S3C_NT35580
         bool "NT35580"

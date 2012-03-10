@@ -49,10 +49,6 @@
 #include <linux/delay.h>
 #endif
 
-#if (CONFIG_FB_S3C_NUM_OVLY_WIN >= CONFIG_FB_S3C_DEFAULT_WINDOW)
-#error "FB_S3C_NUM_OVLY_WIN should be less than FB_S3C_DEFAULT_WINDOW"
-#endif
-
 #define DISPLAY_BOOT_PROGRESS
 
 /*
@@ -83,7 +79,6 @@ static struct struct_frame_buf_mark  frame_buf_mark = {
 	.frames = 2
 };
 
-
 struct s3c_platform_fb *to_fb_plat(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -98,7 +93,7 @@ static struct timer_list progress_timer;
 
 #define PROGRESS_BAR_LEFT_POS	54
 #define PROGRESS_BAR_RIGHT_POS	425
-#define PROGRESS_BAR_START_Y	576
+#define PROGRESS_BAR_START_Y	445
 #define PROGRESS_BAR_WIDTH	4
 #define PROGRESS_BAR_HEIGHT	8
 
@@ -1031,7 +1026,7 @@ static void s3cfb_update_framebuffer(struct fb_info *fb,
 	struct fb_var_screeninfo *var = &fb->var;
 	int row;
 	int bytes_per_pixel = (var->bits_per_pixel / 8 );
-
+	
 	unsigned char *pSrc = buffer;
 	unsigned char *pDst = fbdev->fb[pdata->default_win]->screen_base;
 
@@ -1055,12 +1050,12 @@ static void s3cfb_start_progress(struct fb_info *fb)
 {	
 	int x_pos;
 	init_timer(&progress_timer);	
-
+	
 	progress_timer.expires  = (get_jiffies_64() + (HZ/10));	
 	progress_timer.data     = (long)fb;	
 	progress_timer.function = progress_timer_handler;	
 	progress_pos = PROGRESS_BAR_LEFT_POS;	
-
+	
 	// draw progress background.
 	for (x_pos = PROGRESS_BAR_LEFT_POS ; x_pos <= PROGRESS_BAR_RIGHT_POS ; x_pos += PROGRESS_BAR_WIDTH)
 	{
@@ -1078,16 +1073,16 @@ static void s3cfb_start_progress(struct fb_info *fb)
 		(void*)anycall_progress_bar_left,					
 		PROGRESS_BAR_WIDTH,
 		PROGRESS_BAR_HEIGHT);
-
+	
 	progress_pos += PROGRESS_BAR_WIDTH;	
-
+	
 	s3cfb_update_framebuffer(fb,		
 		progress_pos,
 		PROGRESS_BAR_START_Y,		
 		(void*)anycall_progress_bar_right,				
 		PROGRESS_BAR_WIDTH,
 		PROGRESS_BAR_HEIGHT);
-
+	
 	add_timer(&progress_timer);	
 	progress_flag = 1;
 
@@ -1113,14 +1108,14 @@ static void progress_timer_handler(unsigned long data)
 			1,
 			PROGRESS_BAR_HEIGHT);	
 	}	
-
+	
 	s3cfb_update_framebuffer((struct fb_info *)data,		
 		progress_pos,
 		PROGRESS_BAR_START_Y,
 		(void*)anycall_progress_bar_right,		
 		PROGRESS_BAR_WIDTH,
 		PROGRESS_BAR_HEIGHT);    
-
+	
 	if (progress_pos + PROGRESS_BAR_WIDTH >= PROGRESS_BAR_RIGHT_POS )    
 	{        
 		s3cfb_stop_progress();    
@@ -1133,6 +1128,7 @@ static void progress_timer_handler(unsigned long data)
 	}
 }
 #endif
+
 
 static int __devinit s3cfb_probe(struct platform_device *pdev)
 {
