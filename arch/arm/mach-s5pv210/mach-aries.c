@@ -46,6 +46,7 @@
 #include <mach/param.h>
 #include <mach/system.h>
 #include <mach/sec_switch.h>
+#include <mach/regs-gpio.h>
 
 #include <linux/usb/gadget.h>
 #include <linux/fsa9480.h>
@@ -98,7 +99,6 @@
 #include <linux/mfd/max8998.h>
 #include <linux/switch.h>
 
-
 #ifdef CONFIG_KERNEL_DEBUG_SEC
 #include <linux/kernel_sec_common.h>
 #endif
@@ -149,8 +149,6 @@ static int aries_notifier_call(struct notifier_block *this,
 	if ((code == SYS_RESTART) && _cmd) {
 		if (!strcmp((char *)_cmd, "recovery"))
 			mode = 2; // It's not REBOOT_MODE_RECOVERY, blame Samsung
-
-
 		else
 			mode = REBOOT_MODE_NONE;
 	}
@@ -260,16 +258,7 @@ static struct s3c2410_uartcfg aries_uartcfgs[] __initdata = {
 		.flags		= 0,
 		.ucon		= S5PV210_UCON_DEFAULT,
 		.ulcon		= S5PV210_ULCON_DEFAULT,
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_VIBRANT) || defined(CONFIG_SAMSUNG_GALAXYS)
-#ifdef CONFIG_GPS_CHIPSET_STE_CG2900 /* STE for CG2900 */
-                .ufcon		 = S3C2410_UFCON_FIFOMODE | S5PV210_UFCON_TXTRIG64 | S5PV210_UFCON_RXTRIG8, // -> RX trigger leve : 8byte.
-#else
-		.ufcon		 = S3C2410_UFCON_FIFOMODE | S5PV210_UFCON_TXTRIG64 | S5PV210_UFCON_RXTRIG1, // -> RX trigger leve : 8byte.
-#endif
-#else
 		.ufcon		= S5PV210_UFCON_DEFAULT,
-#endif
-
 	},
 #ifndef CONFIG_FIQ_DEBUGGER
 	{
@@ -323,16 +312,10 @@ static struct s3cfb_lcd s6e63m0 = {
 };
 
 
-
-
-
-
 #ifdef CONFIG_S5PV210_BIGMEM
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (5632 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC1 (4608 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (6144 * SZ_1K)
-
-
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (32768 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (32768 * SZ_1K)
 #else
@@ -439,34 +422,26 @@ static struct s5p_media_device aries_media_devs[] = {
 #ifdef CONFIG_CPU_FREQ
 static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
 	{
-
-		.freq	= 1460000,
+		.freq	= 1500000,
 		.varm	= DVSARM1,
-
 		.vint	= DVSINT1,
 	}, {
 		.freq	= 1400000,
 		.varm	= DVSARM2,
-
 		.vint	= DVSINT2,
 	}, {
-
 		.freq	= 1300000,
 		.varm	= DVSARM3,
-
 		.vint	= DVSINT3,
 	}, {
-
 		.freq	= 1200000,
 		.varm	= DVSARM4,
 		.vint	= DVSINT4,
 	}, {
-
 		.freq	= 1000000,
 		.varm	= DVSARM5,
 		.vint	= DVSINT5,
 	}, {
-
 		.freq	=  800000,
 		.varm	= DVSARM6,
 		.vint	= DVSINT6,
@@ -477,7 +452,6 @@ static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
 	}, {
 		.freq	=  200000,
 		.varm	= DVSARM8,
-
 		.vint	= DVSINT6,
 	}, {
 		.freq	=  100000,
@@ -495,12 +469,6 @@ static struct s5pv210_cpufreq_data smdkc110_cpufreq_plat = {
 static struct regulator_consumer_supply ldo3_consumer[] = {
 	REGULATOR_SUPPLY("pd_io", "s3c-usbgadget")
 };
-
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_VIBRANT) || defined(CONFIG_SAMSUNG_GALAXYS)	
-static struct regulator_consumer_supply ldo4_consumer[] = {
-	REGULATOR_SUPPLY("v_adc", NULL),
-};
-#endif
 
 #ifndef CONFIG_SAMSUNG_FASCINATE
 static struct regulator_consumer_supply ldo5_consumer[] = {
@@ -585,27 +553,10 @@ static struct regulator_init_data aries_ldo3_data = {
 	.consumer_supplies	= ldo3_consumer,
 };
 
-
 static struct regulator_init_data aries_ldo4_data = {
 	.constraints	= {
-		.min_uV		= 3000000,
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		.max_uV		= 3000000,
+		.name		= "VADC_3.3V",
+		.min_uV		= 3300000,
 		.max_uV		= 3300000,
 		.apply_uV	= 1,
 		.always_on	= 1,
@@ -615,7 +566,6 @@ static struct regulator_init_data aries_ldo4_data = {
 		},
 	},
 };
-
 
 #ifndef CONFIG_SAMSUNG_FASCINATE
 static struct regulator_init_data aries_ldo5_data = {
@@ -768,8 +718,8 @@ static struct regulator_init_data aries_ldo16_data = {
 static struct regulator_init_data aries_ldo17_data = {
 	.constraints	= {
 		.name		= "VCC_3.0V_LCD",
-		.min_uV		= 2600000,
-		.max_uV		= 2600000,
+		.min_uV		= 3000000,
+		.max_uV		= 3000000,
 		.apply_uV	= 1,
 		.always_on	= 0,
 		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
@@ -790,7 +740,6 @@ static struct regulator_init_data aries_buck1_data = {
 		.valid_ops_mask	= REGULATOR_CHANGE_VOLTAGE |
 				  REGULATOR_CHANGE_STATUS,
 		.state_mem	= {
-
 			.uV	= ARMBOOT,
 			.mode	= REGULATOR_MODE_NORMAL,
 			.disabled = 1,
@@ -809,7 +758,6 @@ static struct regulator_init_data aries_buck2_data = {
 		.valid_ops_mask	= REGULATOR_CHANGE_VOLTAGE |
 				  REGULATOR_CHANGE_STATUS,
 		.state_mem	= {
-
 			.uV	= INTBOOT,
 			.mode	= REGULATOR_MODE_NORMAL,
 			.disabled = 1,
@@ -1368,6 +1316,16 @@ static struct platform_device s3c_device_i2c13 = {
   };
 #endif
 
+void touch_key_set_int_flt( unsigned long width )
+{
+    writel( readl(S5PV210_GPJ4_INT_FLTCON0) |
+            (1 << 15) |     // enable bit
+            (width << 8),   // max width = 0x2f
+            S5PV210_GPJ4_INT_FLTCON0 );
+}
+
+const unsigned long touch_int_flt_width = 0x2f;   // arbitrary value - max is 0x2f
+
 static void touch_keypad_gpio_init(void)
 {
 	int ret = 0;
@@ -1375,6 +1333,8 @@ static void touch_keypad_gpio_init(void)
 	ret = gpio_request(_3_GPIO_TOUCH_EN, "TOUCH_EN");
 	if (ret)
 		printk(KERN_ERR "Failed to request gpio touch_en.\n");
+		
+	touch_key_set_int_flt( touch_int_flt_width );
 }
 
 static void touch_keypad_onoff(int onoff)
@@ -1390,10 +1350,8 @@ static void touch_keypad_onoff(int onoff)
 static void touch_keypad_gpio_sleep(int onoff) {
 	if (onoff == TOUCHKEY_ON)
 		s3c_gpio_slp_cfgpin(_3_GPIO_TOUCH_EN, S3C_GPIO_SLP_OUT1);
-
 	else
 		s3c_gpio_slp_cfgpin(_3_GPIO_TOUCH_EN, S3C_GPIO_SLP_OUT0);
-
 }
 
 static const int touch_keypad_code[] = {
@@ -3188,7 +3146,7 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.pud	= S3C_GPIO_PULL_NONE,
 		.drv	= S3C_GPIO_DRVSTR_1X,
 	}, 
-	
+
 	// GPE0 ----------------------------
 	{
 		.num	= S5PV210_GPE0(0), // GPIO_CAM_PCLK
@@ -4769,13 +4727,8 @@ void s3c_config_sleep_gpio_table(int array_size, unsigned int (*gpio_table)[3])
 void s3c_config_sleep_gpio(void)
 {
 	/* setting the alive mode registers */
-#if defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_CAPTIVATE)
-	s3c_gpio_cfgpin(S5PV210_GPH0(0), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH0(0), S3C_GPIO_PULL_DOWN);
-#endif
-
 	s3c_gpio_cfgpin(S5PV210_GPH0(1), S3C_GPIO_INPUT);
-#if defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_CAPTIVATE)
+#if defined(CONFIG_SAMSUNG_FASCINATE)
 	s3c_gpio_setpull(S5PV210_GPH0(1), S3C_GPIO_PULL_DOWN);
 #else
 	s3c_gpio_setpull(S5PV210_GPH0(1), S3C_GPIO_PULL_NONE);
@@ -4793,41 +4746,27 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_setpull(S5PV210_GPH0(5), S3C_GPIO_PULL_NONE);
 	gpio_set_value(S5PV210_GPH0(5), 0);
 
-#if defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_CAPTIVATE)
-	s3c_gpio_cfgpin(S5PV210_GPH0(7), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH0(7), S3C_GPIO_PULL_UP);
+#if defined(CONFIG_SAMSUNG_FASCINATE)
+	s3c_gpio_cfgpin(S5PV210_GPH1(0), S3C_GPIO_OUTPUT);
+#else
+	s3c_gpio_cfgpin(S5PV210_GPH1(0), S3C_GPIO_INPUT);
+#endif
+	s3c_gpio_setpull(S5PV210_GPH1(0), S3C_GPIO_PULL_DOWN);
+#if defined(CONFIG_SAMSUNG_FASCINATE)
+	gpio_set_value(S5PV210_GPH1(0), 0);
 #endif
 
 #if defined(CONFIG_SAMSUNG_FASCINATE)
-	s3c_gpio_cfgpin(S5PV210_GPH1(0), S3C_GPIO_OUTPUT);
-	s3c_gpio_setpull(S5PV210_GPH1(0), S3C_GPIO_PULL_DOWN);
-	gpio_set_value(S5PV210_GPH1(0), 0);
-#elif defined(CONFIG_SAMSUNG_CAPTIVATE) && defined (CONFIG_A1026) // Dummy config for Audience chip - which we aren't using at the moment
-	s3c_gpio_cfgpin(S5PV210_GPH1(0), S3C_GPIO_OUTPUT);
-	s3c_gpio_setpull(S5PV210_GPH1(0), S3C_GPIO_PULL_NONE);
-	gpio_set_value(S5PV210_GPH1(0), 1);
-#else
-	s3c_gpio_cfgpin(S5PV210_GPH1(0), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH1(0), S3C_GPIO_PULL_DOWN);
-#endif
-
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) && defined (CONFIG_A1026)
-	s3c_gpio_cfgpin(S5PV210_GPH1(1), S3C_GPIO_OUTPUT);
-	s3c_gpio_setpull(S5PV210_GPH1(1), S3C_GPIO_PULL_DOWN);
-	gpio_set_value(S5PV210_GPH1(1), 1);
-#else
 	s3c_gpio_cfgpin(S5PV210_GPH1(1), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH1(1), S3C_GPIO_PULL_DOWN);
+#else
+	s3c_gpio_cfgpin(S5PV210_GPH1(1), S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(S5PV210_GPH1(1), S3C_GPIO_PULL_NONE);
+	gpio_set_value(S5PV210_GPH1(1), 0);
 #endif
 
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) && defined (CONFIG_A1026)
-	s3c_gpio_cfgpin(S5PV210_GPH1(2), S3C_GPIO_OUTPUT);
-	s3c_gpio_setpull(S5PV210_GPH1(2), S3C_GPIO_PULL_DOWN);
-	gpio_set_value(S5PV210_GPH1(2), 1);
-#else
 	s3c_gpio_cfgpin(S5PV210_GPH1(2), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH1(2), S3C_GPIO_PULL_DOWN);
-#endif
 
 #if defined(CONFIG_SAMSUNG_FASCINATE)
 	s3c_gpio_cfgpin(S5PV210_GPH1(4), S3C_GPIO_OUTPUT);
@@ -4840,85 +4779,50 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_cfgpin(S5PV210_GPH1(4), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH1(4), S3C_GPIO_PULL_DOWN);
 
-	s3c_gpio_cfgpin(S5PV210_GPH1(5), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH1(5), S3C_GPIO_PULL_DOWN);
+	s3c_gpio_cfgpin(S5PV210_GPH1(5), S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(S5PV210_GPH1(5), S3C_GPIO_PULL_NONE);
+	gpio_set_value(S5PV210_GPH1(5), 0);
 
 	s3c_gpio_cfgpin(S5PV210_GPH1(6), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH1(6), S3C_GPIO_PULL_DOWN);
 
 #endif
 
-#if !defined(CONFIG_SAMSUNG_CAPTIVATE)
 	s3c_gpio_cfgpin(S5PV210_GPH1(7), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH1(7), S3C_GPIO_PULL_NONE);
-#endif
 
 	s3c_gpio_cfgpin(S5PV210_GPH2(0), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH2(0), S3C_GPIO_PULL_DOWN);
 
-#if defined(CONFIG_SAMSUNG_CAPTIVATE)
-	s3c_gpio_cfgpin(S5PV210_GPH2(1), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH2(1), S3C_GPIO_PULL_DOWN);
-#else
-	s3c_gpio_cfgpin(S5PV210_GPH2(1), S3C_GPIO_OUTPUT);
-	s3c_gpio_setpull(S5PV210_GPH2(1), S3C_GPIO_PULL_NONE);
-#endif
-	gpio_set_value(S5PV210_GPH2(1), 0);
-
-#if !defined(CONFIG_SAMSUNG_FASCINATE)
+#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined (CONFIG_SAMSUNG_VIBRANT)
 	s3c_gpio_cfgpin(S5PV210_GPH2(2), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH2(2), S3C_GPIO_PULL_DOWN);
-
-	s3c_gpio_cfgpin(S5PV210_GPH2(3), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH2(3), S3C_GPIO_PULL_DOWN);
+#else
+	s3c_gpio_cfgpin(S5PV210_GPH2(2), S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(S5PV210_GPH2(2), S3C_GPIO_PULL_NONE);
+	gpio_set_value(S5PV210_GPH2(2), 0);
 #endif
 
+	s3c_gpio_cfgpin(S5PV210_GPH2(3), S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(S5PV210_GPH2(3), S3C_GPIO_PULL_NONE);
 #if defined(CONFIG_SAMSUNG_FASCINATE)
-	s3c_gpio_cfgpin(S5PV210_GPH2(6), S3C_GPIO_EINT);
-	s3c_gpio_setpull(S5PV210_GPH2(6), S3C_GPIO_PULL_UP);
+	gpio_set_value(S5PV210_GPH2(3), 1);
+#else
+	gpio_set_value(S5PV210_GPH2(3), 0);
 #endif
 
 	s3c_gpio_cfgpin(S5PV210_GPH3(0), S3C_GPIO_INPUT);
+	s3c_gpio_setpull(S5PV210_GPH3(0), S3C_GPIO_PULL_UP);
+
+	s3c_gpio_cfgpin(S5PV210_GPH3(3), S3C_GPIO_INPUT);
 #if defined(CONFIG_SAMSUNG_FASCINATE)
 	s3c_gpio_setpull(S5PV210_GPH3(3), S3C_GPIO_PULL_UP);
 #else
-	s3c_gpio_setpull(S5PV210_GPH3(0), S3C_GPIO_PULL_DOWN);
-#endif
-
-#if defined(CONFIG_SAMSUNG_FASCINATE)
-	s3c_gpio_cfgpin(S5PV210_GPH3(3), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH3(3), S3C_GPIO_PULL_UP);
-#elif !defined(CONFIG_SAMSUNG_CAPTIVATE)
-	s3c_gpio_cfgpin(S5PV210_GPH3(3), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PV210_GPH3(3), S3C_GPIO_PULL_DOWN);
 #endif
 
-#if defined(CONFIG_SAMSUNG_FASCINATE)
-	s3c_gpio_cfgpin(S5PV210_GPH3(4), S3C_GPIO_EINT);
-	s3c_gpio_setpull(S5PV210_GPH3(4), S3C_GPIO_PULL_UP);
-#endif
-
-#if defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_VIBRANT)
-	s3c_gpio_cfgpin(S5PV210_GPH3(5), S3C_GPIO_INPUT);
-	s3c_gpio_setpull(S5PV210_GPH3(5), S3C_GPIO_PULL_DOWN);
-#endif
-
-	s3c_gpio_cfgpin(S5PV210_GPH3(7), S3C_GPIO_OUTPUT);
-#if defined(CONFIG_SAMSUNG_CAPTIVATE)
-	s3c_gpio_setpull(S5PV210_GPH3(7), S3C_GPIO_PULL_UP);
-#else
-	s3c_gpio_setpull(S5PV210_GPH3(7), S3C_GPIO_PULL_NONE);
-#endif
-	gpio_set_value(S5PV210_GPH2(3), 1);
-
-#if !defined(CONFIG_SAMSUNG_FASCINATE)
-	if (gpio_get_value(GPIO_PS_ON)) {
-		s3c_gpio_slp_setpull_updown(GPIO_ALS_SDA_28V, S3C_GPIO_PULL_NONE);
-		s3c_gpio_slp_setpull_updown(GPIO_ALS_SCL_28V, S3C_GPIO_PULL_NONE);
-	} else {
-		s3c_gpio_setpull(GPIO_PS_VOUT, S3C_GPIO_PULL_DOWN);
-	}
-#endif
+	s3c_gpio_cfgpin(S5PV210_GPH3(4), S3C_GPIO_INPUT);
+	s3c_gpio_setpull(S5PV210_GPH3(4), S3C_GPIO_PULL_DOWN);
 }
 EXPORT_SYMBOL(s3c_config_sleep_gpio);
 
@@ -5503,7 +5407,6 @@ static void aries_pm_restart(char mode, const char *cmd)
 // Ugly hack to inject parameters (e.g. device serial, bootmode) into /proc/cmdline
 static void __init aries_inject_cmdline(void) {
 	char *new_command_line;
-	int bootmode = __raw_readl(S5P_INFORM6);
 	int size;
 
 	size = strlen(boot_command_line);
@@ -5511,13 +5414,7 @@ static void __init aries_inject_cmdline(void) {
 	strcpy(new_command_line, saved_command_line);
 	size += sprintf(new_command_line + size, " androidboot.serialno=%08X%08X",
 				system_serial_high, system_serial_low);
-
-	// Only write bootmode when less than 10 to prevent confusion with watchdog
-	// reboot (0xee = 238)
-	if (bootmode < 10) {
-		size += sprintf(new_command_line + size, " bootmode=%d", bootmode);
-	}
-
+	size += sprintf(new_command_line + size, " bootmode=%d", __raw_readl(S5P_INFORM6));
 	saved_command_line = new_command_line;
 }
 
@@ -5614,7 +5511,7 @@ static void __init aries_machine_init(void)
 	/* optical sensor */
 	gp2a_gpio_init();
 	i2c_register_board_info(11, i2c_devs11, ARRAY_SIZE(i2c_devs11));
-	
+
 	/* yamaha magnetic sensor */
 	i2c_register_board_info(12, i2c_devs12, ARRAY_SIZE(i2c_devs12));
 
@@ -5711,10 +5608,10 @@ void otg_phy_init(void)
 	writel(readl(S3C_USBOTG_PHYTUNE) | (0x1<<20),
 			S3C_USBOTG_PHYTUNE);
 
-	/* set DC level as 6 (6%) */
-	writel((readl(S3C_USBOTG_PHYTUNE) & ~(0xf)) | (0x1<<2) | (0x1<<1),
-			S3C_USBOTG_PHYTUNE);
+	/* set DC level as 0xf (24%) */
+  writel(readl(S3C_USBOTG_PHYTUNE) | 0xf, S3C_USBOTG_PHYTUNE);
 }
+
 EXPORT_SYMBOL(otg_phy_init);
 
 /* USB Control request data struct must be located here for DMA transfer */

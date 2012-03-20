@@ -31,10 +31,12 @@
 #include <linux/earlysuspend.h>
 #include <linux/miscdevice.h>
 #include <linux/input/cypress-touchkey.h>
-#include <linux/wakelock.h>
+#include <mach/gpio.h>
+#include <mach/gpio-aries.h>
+#include <mach/regs-gpio.h>
 
-#ifdef CONFIG_BLD
-#include <linux/bld.h>
+#ifdef CONFIG_GENERIC_BLN
+#include <linux/bln.h>
 #endif
 
 #define SCANCODE_MASK		0x07
@@ -48,35 +50,20 @@
 #define OLD_BACKLIGHT_OFF	0x2
 
 #define DEVICE_NAME "cypress-touchkey"
-#define LED_VERSION 2
+
+extern const unsigned long touch_int_flt_width;
+void touch_key_set_int_flt( unsigned long width );
 
 int bl_on = 0;
-static bool bBlink = true;
-static bool bBlinkTimer = false;
-static bool bIsOn = false;
-static int iCountsBlink = 0;
-static unsigned int iTimeBlink = 200;
-static unsigned int iTimesOn = 1;
-static unsigned int iTimesTotal = 10;
-static unsigned int iBacklightTime = 0;
-static unsigned int iBlinkMilisecondsTimeout = 1500;
 static DEFINE_SEMAPHORE(enable_sem);
-static DEFINE_SEMAPHORE(i2c_sem);
-static DECLARE_MUTEX(enable_sem);
-static DECLARE_MUTEX(i2c_sem);
-static uint32_t blink_count;
+//static DEFINE_SEMAPHORE(i2c_sem);
 
 struct cypress_touchkey_devdata *bl_devdata;
+
+static int bl_timeout = 1600; // This gets overridden by userspace AriesParts
 static struct timer_list bl_timer;
 static void bl_off(struct work_struct *bl_off_work);
 static DECLARE_WORK(bl_off_work, bl_off);
-
-static void blink_timer_callback(unsigned long data);
-static struct timer_list blink_timer = TIMER_INITIALIZER(blink_timer_callback, 0, 0);
-static void blink_callback(struct work_struct *blink_work);
-static DECLARE_WORK(blink_work, blink_callback);
-
-static struct wake_lock sBlinkWakeLock;
 
 struct cypress_touchkey_devdata {
 	struct i2c_client *client;
@@ -91,8 +78,8 @@ struct cypress_touchkey_devdata {
 	bool is_sleeping;
 };
 
-#ifdef CONFIG_BLD
-static struct cypress_touchkey_devdata *blddevdata;
+#ifdef CONFIG_GENERIC_BLN
+static struct cypress_touchkey_devdata *blndevdata;
 #endif
 
 static int i2c_touchkey_read_byte(struct cypress_touchkey_devdata *devdata,
@@ -101,7 +88,7 @@ static int i2c_touchkey_read_byte(struct cypress_touchkey_devdata *devdata,
 	int ret;
 	int retry = 2;
 
-	down(&i2c_sem);
+	//down(&i2c_sem);
 
 	while (true) {
 		ret = i2c_smbus_read_byte(devdata->client);
@@ -118,7 +105,7 @@ static int i2c_touchkey_read_byte(struct cypress_touchkey_devdata *devdata,
 		msleep(10);
 	}
 
-	up(&i2c_sem);
+	//up(&i2c_sem);
 
 	return ret;
 }
@@ -129,7 +116,7 @@ static int i2c_touchkey_write_byte(struct cypress_touchkey_devdata *devdata,
 	int ret;
 	int retry = 2;
 
-	down(&i2c_sem);
+	//down(&i2c_sem);
 
 	while (true) {
 		ret = i2c_smbus_write_byte(devdata->client, val);
@@ -145,7 +132,7 @@ static int i2c_touchkey_write_byte(struct cypress_touchkey_devdata *devdata,
 		msleep(10);
 	}
 
-	up(&i2c_sem);
+	//up(&i2c_sem);
 
 	return ret;
 }
@@ -164,7 +151,7 @@ static void all_keys_up(struct cypress_touchkey_devdata *devdata)
 static void bl_off(struct work_struct *bl_off_work)
 {
 	if (bl_devdata == NULL || unlikely(bl_devdata->is_dead) ||
-		bl_devdata->is_powering_on || bl_on >= 1 || bl_devdata->is_sleeping)
+		bl_devdata->is_powering_on || bl_on || bl_devdata->is_sleeping)
 		return;
 
 	i2c_touchkey_write_byte(bl_devdata, bl_devdata->backlight_off);
@@ -175,11 +162,17 @@ void bl_timer_callback(unsigned long data)
 	schedule_work(&bl_off_work);
 }
 
+static void bl_set_timeout() {
+	if (bl_timeout > 0) {
+		mod_timer(&bl_timer, jiffies + msecs_to_jiffies(bl_timeout));
+	}
+}
+
 static int recovery_routine(struct cypress_touchkey_devdata *devdata)
 {
 	int ret = -1;
 	int retry = 10;
-	u8 data;
+	u8 data = 0;
 	int irq_eint;
 
 	if (unlikely(devdata->is_dead)) {
@@ -190,7 +183,7 @@ static int recovery_routine(struct cypress_touchkey_devdata *devdata)
 
 	irq_eint = devdata->client->irq;
 
-	down(&enable_sem);
+	//down(&enable_sem);
 
 	all_keys_up(devdata);
 
@@ -201,7 +194,10 @@ static int recovery_routine(struct cypress_touchkey_devdata *devdata)
 		ret = i2c_touchkey_read_byte(devdata, &data);
 		if (!ret) {
 			if (!devdata->is_sleeping)
+			{
 				enable_irq(irq_eint);
+				touch_key_set_int_flt( touch_int_flt_width );
+			}
 			goto out;
 		}
 		dev_err(&devdata->client->dev, "%s: i2c transfer error retry = "
@@ -212,7 +208,7 @@ static int recovery_routine(struct cypress_touchkey_devdata *devdata)
 	dev_err(&devdata->client->dev, "%s: touchkey died\n", __func__);
 out:
 	dev_err(&devdata->client->dev, "%s: recovery_routine\n", __func__);
-	up(&enable_sem);
+	//up(&enable_sem);
 	return ret;
 }
 
@@ -221,11 +217,23 @@ extern unsigned int touch_state_val;
 
 static irqreturn_t touchkey_interrupt_thread(int irq, void *touchkey_devdata)
 {
-	u8 data;
+	u8 data = 0xff;
 	int i;
 	int ret;
-	int scancode;
+	int scancode = 0xff;
 	struct cypress_touchkey_devdata *devdata = touchkey_devdata;
+
+  for ( i = 0; i < 10; ++i )
+  {
+    ret = gpio_get_value(_3_GPIO_TOUCH_INT);
+  
+    if ( ret & 1 )
+    {
+      // the int pin is high on a falling edge triggered interrupt. Something ain't right here.
+      // probably EMI / phantom key press.  So throw it away.
+      goto err;
+    }
+  }
 
 	ret = i2c_touchkey_read_byte(devdata, &data);
 	if (ret || (data & ESD_STATE_MASK)) {
@@ -245,56 +253,23 @@ static irqreturn_t touchkey_interrupt_thread(int irq, void *touchkey_devdata)
 			goto err;
 		}
 
-#ifdef CONFIG_TOUCH_WAKE
-		if (!device_is_suspended())
-#endif
-		    {
+		/* Don't send down event while the touch screen is being pressed
+		 * to prevent accidental touch key hit.
+		 */
+		if ((data & UPDOWN_EVENT_MASK) || !touch_state_val) {
 			input_report_key(devdata->input_dev,
-					 devdata->pdata->keycode[scancode],
-					 !(data & UPDOWN_EVENT_MASK));
-		    }
-#if defined(CONFIG_TOUCH_WAKE) || defined(CONFIG_BLD)
-		if (!(data & UPDOWN_EVENT_MASK))
-		    {
-#ifdef CONFIG_BLD			
-			touchkey_pressed();
-#endif
-#ifdef CONFIG_TOUCH_WAKE
-			touch_press();
-#endif
-		    }
-#endif
+				devdata->pdata->keycode[scancode],
+				!(data & UPDOWN_EVENT_MASK));
+		}
 	} else {
-#ifdef CONFIG_TOUCH_WAKE
-		if (!device_is_suspended())
-#endif
-		    {
-			for (i = 0; i < devdata->pdata->keycode_cnt; i++)
-			    input_report_key(devdata->input_dev,
-					     devdata->pdata->keycode[i],
-					     !!(data & (1U << i)));
-		    }
-
-#if defined(CONFIG_TOUCH_WAKE) || defined(CONFIG_BLD)
 		for (i = 0; i < devdata->pdata->keycode_cnt; i++)
-		    {
-			if(!!(data & (1U << i)))
-			    {
-#ifdef CONFIG_BLD			
-				touchkey_pressed();
-#endif
-#ifdef CONFIG_TOUCH_WAKE
-				touch_press();
-#endif
-				break;
-			    }
-		    }
-#endif
+			input_report_key(devdata->input_dev,
+				devdata->pdata->keycode[i],
+				!!(data & (1U << i)));
 	}
 
 	input_sync(devdata->input_dev);
-    if ( iBacklightTime > 0 )
-        mod_timer(&bl_timer, jiffies + msecs_to_jiffies(iBacklightTime));
+	bl_set_timeout();
 err:
 	return IRQ_HANDLED;
 }
@@ -302,9 +277,11 @@ err:
 static irqreturn_t touchkey_interrupt_handler(int irq, void *touchkey_devdata)
 {
 	struct cypress_touchkey_devdata *devdata = touchkey_devdata;
+  
+  int i = gpio_get_value(_3_GPIO_TOUCH_INT);
 
-	if (devdata->is_powering_on) {
-		dev_dbg(&devdata->client->dev, "%s: ignoring spurious boot "
+	if ( (i & 1) || devdata->is_powering_on) {
+		dev_dbg(&devdata->client->dev, "%s: ignoring spurious "
 					"interrupt\n", __func__);
 		return IRQ_HANDLED;
 	}
@@ -313,81 +290,44 @@ static irqreturn_t touchkey_interrupt_handler(int irq, void *touchkey_devdata)
 }
 
 static void notify_led_on(void) {
+	down(&enable_sem);
 
-	if (unlikely(bl_devdata->is_dead))
-		return;
+	if (unlikely(bl_devdata->is_dead) || bl_on)
+		goto out;
 
 	if (bl_devdata->is_sleeping) {
 		bl_devdata->pdata->touchkey_sleep_onoff(TOUCHKEY_ON);
 		bl_devdata->pdata->touchkey_onoff(TOUCHKEY_ON);
 	}
 	i2c_touchkey_write_byte(bl_devdata, bl_devdata->backlight_on);
-	bIsOn = true;
+	bl_on = 1;
+
+	printk(KERN_DEBUG "%s: notification led enabled\n", __FUNCTION__);
+
+out:
+	up(&enable_sem);
 }
 
 static void notify_led_off(void) {
+	// Avoid race condition with touch key resume
+	down(&enable_sem);
 
-	if (unlikely(bl_devdata->is_dead))
-		return;
+	if (unlikely(bl_devdata->is_dead) || !bl_on)
+		goto out;
+
+	if (bl_on && bl_timer.expires < jiffies) // Don't disable if there's a timer scheduled
+		i2c_touchkey_write_byte(bl_devdata, bl_devdata->backlight_off);
 
 	bl_devdata->pdata->touchkey_sleep_onoff(TOUCHKEY_OFF);
 	if (bl_devdata->is_sleeping)
 		bl_devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
 
-	if (bl_on != 1) // Don't disable if there's a timer scheduled
-		i2c_touchkey_write_byte(bl_devdata, bl_devdata->backlight_off);
+	bl_on = 0;
 
-	bIsOn = false;
-}
+	printk(KERN_DEBUG "%s: notification led disabled\n", __FUNCTION__);
 
-
-static void blink_callback(struct work_struct *blink_work)
-{
-    if ( bl_on == 0) {
-            printk(KERN_DEBUG "%s: ERROR notification BLINK ENTER without CALL 0 \n", __FUNCTION__);
-            // notify_led_off();
-            del_timer(&blink_timer);
-            wake_unlock(&sBlinkWakeLock);
-            return;
-    }
-
-    if ( bl_on == 2) {
-            printk(KERN_DEBUG "%s: ERROR notification BLINK ENTER without CALL 2\n", __FUNCTION__);
-            notify_led_on();
-            del_timer(&blink_timer);
-            wake_unlock(&sBlinkWakeLock);
-            bBlinkTimer = false;
-            return;
-    }
-
-    if (--blink_count == 0 && iBlinkMilisecondsTimeout != 0) {
-        notify_led_on();
-        if ( bBlinkTimer ) {
-            bBlinkTimer = false;
-            bl_on = 2;
-            del_timer(&blink_timer);
-            wake_unlock(&sBlinkWakeLock);
-        }
-        return;
-    }
-
-    if (iCountsBlink++ < iTimesOn) {
-        if (!bIsOn)
-            notify_led_on();
-    } else {
-        if (bIsOn)
-            notify_led_off();
-    }
-
-    if ( iCountsBlink >= iTimesTotal)
-        iCountsBlink = 0;
-
-}
-
-static void blink_timer_callback(unsigned long data)
-{
-    schedule_work(&blink_work);
-    mod_timer(&blink_timer, jiffies + msecs_to_jiffies(iTimeBlink));
+out:
+	up(&enable_sem);
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -406,9 +346,19 @@ static void cypress_touchkey_early_suspend(struct early_suspend *h)
 
 	disable_irq(devdata->client->irq);
 
+#ifdef CONFIG_GENERIC_BLN
+  /*
+   * Disallow powering off the touchkey controller
+   * while a led notification is ongoing
+   */
+  if(!bln_is_ongoing()) {
+    devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
+    devdata->pdata->touchkey_sleep_onoff(TOUCHKEY_OFF);
+  }
+#else
 	if (!bl_on)
 		devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
-
+#endif
 	all_keys_up(devdata);
 	devdata->is_sleeping = true;
 
@@ -436,13 +386,13 @@ static void cypress_touchkey_early_resume(struct early_suspend *h)
 	}
 	devdata->is_dead = false;
 	enable_irq(devdata->client->irq);
+	touch_key_set_int_flt( touch_int_flt_width );
 	devdata->is_powering_on = false;
 	devdata->is_sleeping = false;
 
 	up(&enable_sem);
 
-    if ( iBacklightTime > 0 )
-        mod_timer(&bl_timer, jiffies + msecs_to_jiffies(iBacklightTime));
+	bl_set_timeout();
 }
 #endif
 
@@ -454,173 +404,113 @@ static ssize_t led_status_write(struct device *dev, struct device_attribute *att
 {
 	unsigned int data;
 
-    printk(KERN_DEBUG "%s: notification LED ENTER\n", __FUNCTION__);
 	if (sscanf(buf, "%u\n", &data)) {
-	    if (data == 0 && bl_on == 0)
-            return 0;
-		if (data >= 1) {
-            all_keys_up(bl_devdata);
-            // printk(KERN_DEBUG "%s: notification led enabled\n", __FUNCTION__);
-            if (bBlink && data == 1 && bl_on != 1) {
-                // printk(KERN_DEBUG "%s: notification led TIMER enabled\n", __FUNCTION__);
-                wake_lock(&sBlinkWakeLock);
-                blink_timer.expires = jiffies + msecs_to_jiffies(iTimeBlink);
-                blink_count = iBlinkMilisecondsTimeout;
-                add_timer(&blink_timer);
-                bBlinkTimer = true;
-            }
-            bl_on = 1;
-            notify_led_on();
-		}
-		else {
-            // printk(KERN_DEBUG "%s: notification led dissabled\n", __FUNCTION__);
-			bl_on = 0;
+		if (data == 1)
+			notify_led_on();
+		else
 			notify_led_off();
-			if ( bBlinkTimer ) {
-                bBlinkTimer = false;
-                del_timer(&blink_timer);
-                wake_unlock(&sBlinkWakeLock);
-			}
-		}
 	}
 	return size;
 }
 
-static ssize_t led_timeout_read(struct device *dev, struct device_attribute *attr, char *buf) {
-unsigned int iSeconds;
-
-    iSeconds = iBacklightTime / 1000;
-	return sprintf(buf,"%u\n", iSeconds);
+static ssize_t bl_timeout_read(struct device *dev, struct device_attribute *attr, char *buf) {
+	return sprintf(buf,"%d\n", bl_timeout);
 }
 
-static ssize_t led_timeout_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t bl_timeout_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
-	unsigned int data;
-
-	if (sscanf(buf, "%u\n", &data)) {
-            iBacklightTime = data * 1000;
-	}
+	sscanf(buf, "%d\n", &bl_timeout);
 	return size;
-}
-
-static ssize_t led_blinktimeout_read(struct device *dev, struct device_attribute *attr, char *buf) {
-unsigned int iMinutes;
-
-    iMinutes = iBlinkMilisecondsTimeout / 300;
-	return sprintf(buf,"%u\n", iMinutes);
-}
-
-static ssize_t led_blinktimeout_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned int data;
-
-	if (sscanf(buf, "%u\n", &data)) {
-            iBlinkMilisecondsTimeout = data * 300;
-            if(data >= 1)
-                bBlink = true;
-            else
-                bBlink = false;
-	}
-	mod_timer(&blink_timer, jiffies + msecs_to_jiffies(iTimeBlink));
-	return size;
-}
-
-static ssize_t led_blink_read(struct device *dev, struct device_attribute *attr, char *buf) {
-	return sprintf(buf,"%u\n", bBlink);
-}
-
-static ssize_t led_blink_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned int data;
-
-	if (sscanf(buf, "%u\n", &data)) {
-            if (data == 0)
-                bBlink = false;
-            else
-                bBlink = true;
-	}
-	return size;
-}
-
-static ssize_t led_version_read(struct device * dev, struct device_attribute * attr, char * buf)
-{
-    return sprintf(buf, "%u\n", LED_VERSION);
 }
 
 static DEVICE_ATTR(led, S_IRUGO | S_IWUGO , led_status_read, led_status_write);
-static DEVICE_ATTR(bl_timeout, S_IRUGO | S_IWUGO , led_timeout_read, led_timeout_write);
-static DEVICE_ATTR(blinktimeout, S_IRUGO | S_IWUGO , led_blinktimeout_read, led_blinktimeout_write);
-static DEVICE_ATTR(blink, S_IRUGO | S_IWUGO , led_blink_read, led_blink_write);
-static DEVICE_ATTR(version, S_IRUGO , led_version_read, NULL);
+static DEVICE_ATTR(bl_timeout, S_IRUGO | S_IWUGO, bl_timeout_read, bl_timeout_write);
 
 static struct attribute *bl_led_attributes[] = {
-	&dev_attr_led.attr,
-        &dev_attr_bl_timeout.attr,
-        &dev_attr_blinktimeout.attr,
-        &dev_attr_blink.attr,
-        &dev_attr_version.attr,
-	NULL
+		&dev_attr_led.attr,
+		&dev_attr_bl_timeout.attr, // Not the best place, but creating a new device is more trouble that it's worth
+		NULL
 };
 
 static struct attribute_group bl_led_group = {
-	.attrs  = bl_led_attributes,
+		.attrs  = bl_led_attributes,
 };
 
 static struct miscdevice bl_led_device = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "notification",
+		.minor = MISC_DYNAMIC_MINOR,
+		.name = "notification",
 };
 
-static int cypress_touchkey_open(struct input_dev *input_dev)
-{
-	struct device *dev = &input_dev->dev;
-	struct cypress_touchkey_devdata *devdata = dev_get_drvdata(dev);
-	u8 data[3];
-	int ret;
-
-	ret = i2c_master_recv(devdata->client, data, sizeof(data));
-	if (ret < sizeof(data)) {
-		if (ret >= 0)
-			ret = -EIO;
-		dev_err(dev, "%s: error reading hardware version\n", __func__);
-		goto done;
-	}
-
-	dev_info(dev, "%s: hardware rev1 = %#02x, rev2 = %#02x\n", __func__,
-				data[1], data[2]);
-
-	devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
-	devdata->pdata->touchkey_onoff(TOUCHKEY_ON);
-
-	ret = i2c_touchkey_write_byte(devdata, devdata->backlight_on);
-	if (ret) {
-		dev_err(dev, "%s: touch keypad backlight on failed\n",
-				__func__);
-		goto done;
-	}
-
-done:
-	input_dev->open = NULL;
-	return 0;
+#ifdef CONFIG_GENERIC_BLN
+static void enable_touchkey_backlights(void){
+       i2c_touchkey_write_byte(blndevdata, blndevdata->backlight_on);
 }
 
-#ifdef CONFIG_BLD
-static void cypress_touchkey_bld_disable(void)
-{
-    i2c_touchkey_write_byte(blddevdata, blddevdata->backlight_off);
+static void disable_touchkey_backlights(void){
+       i2c_touchkey_write_byte(blndevdata, blndevdata->backlight_off);
 }
 
-static void cypress_touchkey_bld_enable(void)
-{
-    i2c_touchkey_write_byte(blddevdata, blddevdata->backlight_on);
-}
+static void cypress_touchkey_enable_led_notification(void){
+  /* is_powering_on signals whether touchkey lights are used for touchmode */
+  if (blndevdata->is_powering_on){
+    /* reconfigure gpio for sleep mode */
+    blndevdata->pdata->touchkey_sleep_onoff(TOUCHKEY_ON);
 
-static struct bld_implementation cypress_touchkey_bld = 
-    {
-  .enable = cypress_touchkey_bld_enable,
-  .disable = cypress_touchkey_bld_disable,
-    };
+    /*
+     * power on the touchkey controller
+     * This is actually not needed, but it is intentionally
+     * left for the case that the early_resume() function
+     * did not power on the touchkey controller for some reasons
+     */
+    blndevdata->pdata->touchkey_onoff(TOUCHKEY_ON);
+
+    /* write to i2cbus, enable backlights */
+    enable_touchkey_backlights();
+  }
+  else
+#ifdef CONFIG_TOUCH_WAKE
+      {
+    enable_touchkey_backlights();
+      }
+#else
+      pr_info("%s: cannot set notification led, touchkeys are enabled\n",__FUNCTION__);
 #endif
+}
+
+static void cypress_touchkey_disable_led_notification(void){
+  /*
+   * reconfigure gpio for sleep mode, this has to be done
+   * independently from the power status
+   */
+  blndevdata->pdata->touchkey_sleep_onoff(TOUCHKEY_OFF);
+
+  /* if touchkeys lights are not used for touchmode */
+  if (blndevdata->is_powering_on){
+    disable_touchkey_backlights();
+
+    #if 0
+    /*
+     * power off the touchkey controller
+     * This is actually not needed, the early_suspend function
+     * should take care of powering off the touchkey controller
+     */
+    blndevdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
+    #endif
+  }
+#ifdef CONFIG_TOUCH_WAKE
+  else
+      {
+    disable_touchkey_backlights();
+      }
+#endif  
+}
+
+static struct bln_implementation cypress_touchkey_bln = {
+  .enable = cypress_touchkey_enable_led_notification,
+  .disable = cypress_touchkey_disable_led_notification,
+};
+#endif
+
 
 static int cypress_touchkey_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -691,9 +581,6 @@ static int cypress_touchkey_probe(struct i2c_client *client,
 	dev_info(dev, "%s: hardware rev1 = %#02x, rev2 = %#02x\n", __func__,
 				data[1], data[2]);
 
-	if (data[1] != 0xa || data[2] < 0x9)
-		input_dev->open = cypress_touchkey_open;
-
 #ifdef CONFIG_KEYPAD_CYPRESS_TOUCH_HAS_LEGACY_KEYCODE
 	devdata->has_legacy_keycode = true;
 #else
@@ -728,6 +615,8 @@ static int cypress_touchkey_probe(struct i2c_client *client,
 		goto err_req_irq;
 	}
 
+  touch_key_set_int_flt( touch_int_flt_width );
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	devdata->early_suspend.suspend = cypress_touchkey_early_suspend;
 	devdata->early_suspend.resume = cypress_touchkey_early_resume;
@@ -736,9 +625,9 @@ static int cypress_touchkey_probe(struct i2c_client *client,
 
 	devdata->is_powering_on = false;
 
-#ifdef CONFIG_BLD
-	blddevdata = devdata;
-	register_bld_implementation(&cypress_touchkey_bld);
+#ifdef CONFIG_GENERIC_BLN
+  blndevdata = devdata;
+  register_bln_implementation(&cypress_touchkey_bln);
 #endif
 
 	if (misc_register(&bl_led_device))
@@ -816,13 +705,6 @@ static int __init touchkey_init(void)
 	if (ret)
 		pr_err("%s: cypress touch keypad registration failed. (%d)\n",
 				__func__, ret);
-
-    /* Initialize wake locks */
-    wake_lock_init(&sBlinkWakeLock, WAKE_LOCK_SUSPEND, "blink_wake");
-
-	setup_timer(&bl_timer, bl_timer_callback, 0);
-	setup_timer(&blink_timer, blink_timer_callback, 0);
-	mod_timer(&blink_timer, jiffies + msecs_to_jiffies(iTimeBlink));
 
 	return ret;
 }

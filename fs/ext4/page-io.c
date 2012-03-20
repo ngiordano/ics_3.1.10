@@ -105,7 +105,7 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
 	if (list_empty(&io->list))
 		return ret;
 
-	if (!(io->flag & EXT4_IO_END_UNWRITTEN))
+	if (!(io->flag & (EXT4_IO_END_UNWRITTEN|EXT4_IO_END_DIRECT)))
 		return ret;
 
 	ret = ext4_convert_unwritten_extents(inode, offset, size);
@@ -119,15 +119,18 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
 
 	if (io->iocb)
 		aio_complete(io->iocb, io->result, 0);
-	if (io->flag & EXT4_IO_END_DIRECT)
-        //inode_dio_done(inode);
+	
+	if (io->flag & (EXT4_IO_END_DIRECT|EXT4_IO_END_UNWRITTEN))
+	{
+    io->flag &= ~(EXT4_IO_END_DIRECT|EXT4_IO_END_UNWRITTEN);
 		/* Wake up anyone waiting on unwritten extent conversion */
 		wq = ext4_ioend_wq(io->inode);
 		if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten) &&
-		    waitqueue_active(wq)) {
+		    waitqueue_active(wq))
+		{
 			wake_up_all(wq);
 		}
-	
+	}
 
 	return ret;
 }
@@ -143,7 +146,23 @@ static void ext4_end_io_work(struct work_struct *work)
 	unsigned long		flags;
 	int			ret;
 
-	mutex_lock(&inode->i_mutex);
+	if (!mutex_trylock(&inode->i_mutex)) {
+		/*
+		 * Requeue the work instead of waiting so that the work
+		 * items queued after this can be processed.
+		 */
+		queue_work(EXT4_SB(inode->i_sb)->dio_unwritten_wq, &io->work);
+		/*
+		 * To prevent the ext4-dio-unwritten thread from keeping
+		 * requeueing end_io requests and occupying cpu for too long,
+		 * yield the cpu if it sees an end_io request that has already
+		 * been requeued.
+		 */
+		if (io->flag & EXT4_IO_END_QUEUED)
+			yield();
+		io->flag |= EXT4_IO_END_QUEUED;
+		return;
+	}
 	ret = ext4_end_io_nolock(io);
 	if (ret < 0) {
 		mutex_unlock(&inode->i_mutex);
@@ -390,6 +409,18 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 
 		block_end = block_start + blocksize;
 		if (block_start >= len) {
+			/*
+			 * Comments copied from block_write_full_page_endio:
+			 *
+			 * The page straddles i_size.  It must be zeroed out on
+			 * each and every writepage invocation because it may
+			 * be mmapped.  "A file is mapped in multiples of the
+			 * page size.  For a file that is not a multiple of
+			 * the  page size, the remaining memory is zeroed when
+			 * mapped, and writes to that region are not written
+			 * out to the file."
+			 */
+			zero_user_segment(page, block_start, block_end);
 			clear_buffer_dirty(bh);
 			set_buffer_uptodate(bh);
 			continue;
