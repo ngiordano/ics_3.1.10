@@ -1953,7 +1953,11 @@ CONFIG_FB_VOODOO=y
 # CONFIG_FB_S3C_NT35580 is not set
 # CONFIG_FB_S3C_LVDS is not set
 # CONFIG_FB_S3C_AMS701KA is not set
+<<<<<<< HEAD
+CONFIG_FB_S3C_MDNIE=y
+=======
 # CONFIG_FB_S3C_MDNIE is not set
+>>>>>>> 4b9e27fe8a71fdc17fbcfb2b7d6f7e7b5afe0fcf
 # CONFIG_FB_S3C_CMC623 is not set
 # CONFIG_FB_S1D13XXX is not set
 # CONFIG_FB_TMIO is not set
