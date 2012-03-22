@@ -2874,7 +2874,11 @@ static struct sec_jack_zone sec_jack_zones[] = {
 
 /* To support 3-buttons earjack */
 static struct sec_jack_buttons_zone sec_jack_buttons_zones[] = {
+<<<<<<< HEAD
+#if defined(CONFIG_SAMSUNG_CAPTIVATE)
+=======
 #if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_VIBRANT)
+>>>>>>> 4b9e27fe8a71fdc17fbcfb2b7d6f7e7b5afe0fcf
 	{
 		/* 0 <= adc <=110, stable zone */
 		.code		= KEY_MEDIA,
