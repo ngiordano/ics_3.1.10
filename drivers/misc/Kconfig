@@ -594,12 +594,17 @@ config PN544
 	help
 	  NXP PN544 Near Field Communication controller support.
 
-config SAMSUNG_PARAM
-	bool "Samsung Param Driver"
-	depends on MACH_ARIES
-	default n
-	help
-	  Driver for communication with Samsung's secondary bootloader
+config BLX
+       bool "support for Battery Life eXtender"
+       default y
+       help
+        Say Y here to enable Battery Life eXtender
+
+config LIVE_OC
+       bool "Support for Live OC"
+       default y
+       help
+         Say Y here to enable Live OC
 
 config CUSTOM_VOLTAGE
        bool "Support for Custom Voltage"
@@ -613,10 +618,5 @@ config GENERIC_BLN
        help
          Say Y here to enable the backlight notification for android led-notification (modified liblight needed)
 
-config LIVE_OC
-       bool "Support for Live OC"
-       default y
-       help
-         Say Y here to enable Live OC
 
 endif # MISC_DEVICES
