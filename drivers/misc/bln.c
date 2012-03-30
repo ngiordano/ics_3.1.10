@@ -76,7 +76,7 @@ static void enable_led_notification(void)
 
 		/* Start timer */
 		blink_timer.expires = jiffies +
-				msecs_to_jiffies(bln_blink_interval);
+			msecs_to_jiffies(bln_blink_interval);
 		blink_count = bln_blink_max_count;
 		add_timer(&blink_timer);
 	}

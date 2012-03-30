@@ -15,7 +15,7 @@
 #include <linux/earlysuspend.h>
 #include <linux/mutex.h>
 
-static bool bld_enabled = true;
+static bool bld_enabled = false;
 
 static bool backlight_dimmed = false;
 
@@ -120,7 +120,7 @@ static ssize_t backlightdimmer_status_write(struct device * dev, struct device_a
     if(sscanf(buf, "%u\n", &data) == 1) 
 	{
 	    pr_devel("%s: %u \n", __FUNCTION__, data);
-
+	    
 	    if (data == 1) 
 		{
 		    pr_info("%s: BLD function enabled\n", __FUNCTION__);
